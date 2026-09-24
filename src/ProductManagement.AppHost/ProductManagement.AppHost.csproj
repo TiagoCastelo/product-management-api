@@ -13,4 +13,9 @@
     <PackageReference Include="Aspire.Hosting.SqlServer" Version="13.5.4" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\ProductManagement.Api\ProductManagement.Api.csproj" />
+    <ProjectReference Include="..\ProductManagement.MigrationService\ProductManagement.MigrationService.csproj" />
+  </ItemGroup>
+
 </Project>
