@@ -1,41 +1,48 @@
+using System.Text.Json;
+
+using ProductManagement.Api.ErrorHandling;
+using ProductManagement.Api.Products;
+using ProductManagement.Application;
+using ProductManagement.Infrastructure;
+
+using Scalar.AspNetCore;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
+builder.AddServiceDefaults();
+builder.AddInfrastructure();
+builder.Services.AddApplication();
 builder.Services.AddOpenApi();
+builder.Services.AddValidation();
+builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = context =>
+{
+	if (context.ProblemDetails is HttpValidationProblemDetails validationProblemDetails)
+	{
+		var camelCasedErrors = validationProblemDetails.Errors.ToDictionary(
+			pair => JsonNamingPolicy.CamelCase.ConvertName(pair.Key),
+			pair => pair.Value);
+		validationProblemDetails.Errors.Clear();
+		foreach (var (key, value) in camelCasedErrors)
+		{
+			validationProblemDetails.Errors.Add(key, value);
+		}
+	}
+});
+builder.Services.AddExceptionHandler<BadHttpRequestExceptionHandler>();
+builder.Services.AddExceptionHandler<UnhandledExceptionHandler>();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+app.UseExceptionHandler();
+app.UseStatusCodePages();
+
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
+	app.MapOpenApi();
+	app.MapScalarApiReference();
 }
 
-app.UseHttpsRedirection();
-
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
-
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast");
+app.MapDefaultEndpoints();
+app.MapProductEndpoints();
 
 app.Run();
-
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}

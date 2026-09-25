@@ -8,9 +8,8 @@ public sealed class DesignTimeDbContextFactory : IDesignTimeDbContextFactory<Pro
 	public ProductDbContext CreateDbContext(string[] args)
 	{
 		var optionsBuilder = new DbContextOptionsBuilder<ProductDbContext>();
-        
-		optionsBuilder.UseSqlServer("Server=fake;Database=fake;Trusted_Connection=True;");
-
+		optionsBuilder.UseSqlServer();
+		optionsBuilder.UseProductSeeding();
 		return new ProductDbContext(optionsBuilder.Options);
 	}
 }

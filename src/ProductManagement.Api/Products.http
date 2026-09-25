@@ -1,0 +1,373 @@
+@host = http://localhost:5080
+
+### List all products (200, every product includes its stock)
+GET {{host}}/api/products
+Accept: application/json
+
+> {%
+    client.test("200 with products that include stock", function () {
+        client.assert(response.status === 200, "Expected 200 but got " + response.status);
+        client.assert(response.body.length > 0, "Expected a non-empty list");
+        client.assert(response.body[0].stock !== undefined, "Expected stock on every product");
+    });
+%}
+
+### Create a product (201, six-digit id, Location header)
+POST {{host}}/api/products
+Content-Type: application/json
+Accept: application/json
+
+{
+  "sku": "KB-{{$timestamp}}",
+  "name": "Mechanical Keyboard",
+  "description": "Tactile mechanical keyboard",
+  "price": 49.99,
+  "stock": 12
+}
+
+> {%
+    client.test("201 with a six-digit id", function () {
+        client.assert(response.status === 201, "Expected 201 but got " + response.status);
+        client.assert(response.body.id >= 100000 && response.body.id <= 999999, "Expected a six-digit id");
+        client.assert(response.headers.valueOf("Location") === "/api/products/" + response.body.id, "Expected a Location header");
+    });
+    client.global.set("productId", response.body.id);
+    client.global.set("productSku", response.body.sku);
+    client.global.set("originalRowVersion", response.body.rowVersion);
+%}
+
+### Create a product with an invalid body: bad sku, empty name, price and stock out of range (400)
+POST {{host}}/api/products
+Content-Type: application/json
+Accept: application/json
+
+{
+  "sku": "bad sku!",
+  "name": "",
+  "price": 0,
+  "stock": -1
+}
+
+> {%
+    client.test("400 with an error per invalid field", function () {
+        client.assert(response.status === 400, "Expected 400 but got " + response.status);
+        ["sku", "name", "price", "stock"].forEach(function (field) {
+            client.assert(response.body.errors[field] !== undefined, "Expected an error for " + field);
+        });
+    });
+%}
+
+### Create a product with a SKU that already exists (409)
+POST {{host}}/api/products
+Content-Type: application/json
+Accept: application/json
+
+{
+  "sku": "{{productSku}}",
+  "name": "Mechanical Keyboard Duplicate",
+  "price": 59.99,
+  "stock": 5
+}
+
+> {%
+    client.test("409 Duplicate SKU", function () {
+        client.assert(response.status === 409, "Expected 409 but got " + response.status);
+        client.assert(response.body.title === "Duplicate SKU", "Unexpected title: " + response.body.title);
+    });
+%}
+
+### Create a product close to the stock overflow boundary, used below
+POST {{host}}/api/products
+Content-Type: application/json
+Accept: application/json
+
+{
+  "sku": "OVF-{{$timestamp}}",
+  "name": "Overflow Candidate",
+  "price": 9.99,
+  "stock": 2147483645
+}
+
+> {%
+    client.test("201", function () {
+        client.assert(response.status === 201, "Expected 201 but got " + response.status);
+    });
+    client.global.set("overflowProductId", response.body.id);
+%}
+
+### Create a product dedicated to the delete happy path, used below
+POST {{host}}/api/products
+Content-Type: application/json
+Accept: application/json
+
+{
+  "sku": "DEL-{{$timestamp}}",
+  "name": "Delete Candidate",
+  "price": 5.00,
+  "stock": 1
+}
+
+> {%
+    client.test("201", function () {
+        client.assert(response.status === 201, "Expected 201 but got " + response.status);
+    });
+    client.global.set("deleteProductId", response.body.id);
+%}
+
+### Get a product by id (200)
+GET {{host}}/api/products/{{productId}}
+Accept: application/json
+
+> {%
+    client.test("200 with the created product", function () {
+        client.assert(response.status === 200, "Expected 200 but got " + response.status);
+        client.assert(response.body.sku === client.global.get("productSku"), "Unexpected sku " + response.body.sku);
+    });
+%}
+
+### Get a product by an unknown id (404)
+GET {{host}}/api/products/999999
+Accept: application/json
+
+> {%
+    client.test("404 Product not found", function () {
+        client.assert(response.status === 404, "Expected 404 but got " + response.status);
+    });
+%}
+
+### Update product details; sku, stock and id in the body are ignored (200 with a new rowVersion)
+PUT {{host}}/api/products/{{productId}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "sku": "SHOULD-BE-IGNORED",
+  "id": 1,
+  "name": "Mechanical Keyboard V2",
+  "description": "Tactile mechanical keyboard, updated",
+  "price": 54.99,
+  "stock": 999,
+  "rowVersion": "{{originalRowVersion}}"
+}
+
+> {%
+    client.test("200, new rowVersion, sku and stock unchanged", function () {
+        client.assert(response.status === 200, "Expected 200 but got " + response.status);
+        client.assert(response.body.rowVersion !== client.global.get("originalRowVersion"), "Expected a new rowVersion");
+        client.assert(response.body.sku === client.global.get("productSku"), "SKU must not change");
+        client.assert(response.body.stock === 12, "Stock must not change");
+    });
+%}
+
+### Update again with the now-stale rowVersion (409)
+PUT {{host}}/api/products/{{productId}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "name": "Mechanical Keyboard V3",
+  "price": 59.99,
+  "rowVersion": "{{originalRowVersion}}"
+}
+
+> {%
+    client.test("409 Concurrency conflict", function () {
+        client.assert(response.status === 409, "Expected 409 but got " + response.status);
+        client.assert(response.body.title === "Concurrency conflict", "Unexpected title: " + response.body.title);
+    });
+%}
+
+### Update without a rowVersion (400)
+PUT {{host}}/api/products/{{productId}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "name": "Mechanical Keyboard V4",
+  "price": 59.99
+}
+
+> {%
+    client.test("400 with a rowVersion error", function () {
+        client.assert(response.status === 400, "Expected 400 but got " + response.status);
+        client.assert(response.body.errors.rowVersion !== undefined, "Expected an error for rowVersion");
+    });
+%}
+
+### Update an unknown product (404)
+PUT {{host}}/api/products/999999
+Content-Type: application/json
+Accept: application/json
+
+{
+  "name": "Ghost",
+  "price": 1.00,
+  "rowVersion": "AAAAAAAAAAA="
+}
+
+> {%
+    client.test("404 Product not found", function () {
+        client.assert(response.status === 404, "Expected 404 but got " + response.status);
+    });
+%}
+
+### Decrement stock (200, 12 - 2 = 10)
+POST {{host}}/api/products/{{productId}}/decrement-stock/2
+
+> {%
+    client.test("200 with stock 10", function () {
+        client.assert(response.status === 200, "Expected 200 but got " + response.status);
+        client.assert(response.body.stock === 10, "Expected stock 10 but got " + response.body.stock);
+    });
+%}
+
+### Decrement stock by more than is available (409, stock unchanged)
+POST {{host}}/api/products/{{productId}}/decrement-stock/999999
+
+> {%
+    client.test("409 Insufficient stock", function () {
+        client.assert(response.status === 409, "Expected 409 but got " + response.status);
+        client.assert(response.body.title === "Insufficient stock", "Unexpected title: " + response.body.title);
+    });
+%}
+
+### Decrement stock with a non-numeric quantity (400)
+POST {{host}}/api/products/{{productId}}/decrement-stock/abc
+
+> {%
+    client.test("400", function () {
+        client.assert(response.status === 400, "Expected 400 but got " + response.status);
+    });
+%}
+
+### Decrement stock for an unknown product (404)
+POST {{host}}/api/products/999999/decrement-stock/1
+
+> {%
+    client.test("404 Product not found", function () {
+        client.assert(response.status === 404, "Expected 404 but got " + response.status);
+    });
+%}
+
+### Add to stock (200, 10 + 3 = 13)
+POST {{host}}/api/products/{{productId}}/add-to-stock/3
+
+> {%
+    client.test("200 with stock 13", function () {
+        client.assert(response.status === 200, "Expected 200 but got " + response.status);
+        client.assert(response.body.stock === 13, "Expected stock 13 but got " + response.body.stock);
+    });
+%}
+
+### Add to stock past int.MaxValue (409, stock unchanged)
+POST {{host}}/api/products/{{overflowProductId}}/add-to-stock/10
+
+> {%
+    client.test("409 Stock overflow", function () {
+        client.assert(response.status === 409, "Expected 409 but got " + response.status);
+        client.assert(response.body.title === "Stock overflow", "Unexpected title: " + response.body.title);
+    });
+%}
+
+### Add to stock for an unknown product (404)
+POST {{host}}/api/products/999999/add-to-stock/1
+
+> {%
+    client.test("404 Product not found", function () {
+        client.assert(response.status === 404, "Expected 404 but got " + response.status);
+    });
+%}
+
+### Search products by partial, case-insensitive name (200)
+GET {{host}}/api/products/search?name=keyboard
+Accept: application/json
+
+> {%
+    client.test("200 including the created product", function () {
+        client.assert(response.status === 200, "Expected 200 but got " + response.status);
+        var id = client.global.get("productId");
+        client.assert(response.body.some(function (p) { return String(p.id) === String(id); }), "Expected product " + id + " in the results");
+    });
+%}
+
+### Search with a missing name (400)
+GET {{host}}/api/products/search
+Accept: application/json
+
+> {%
+    client.test("400", function () {
+        client.assert(response.status === 400, "Expected 400 but got " + response.status);
+    });
+%}
+
+### Search with a whitespace-only name (400)
+GET {{host}}/api/products/search?name=%20%20
+Accept: application/json
+
+> {%
+    client.test("400", function () {
+        client.assert(response.status === 400, "Expected 400 but got " + response.status);
+    });
+%}
+
+### List products within an inclusive stock range (200)
+GET {{host}}/api/products/stock-level?min=13&max=13
+Accept: application/json
+
+> {%
+    client.test("200 including the product with stock 13", function () {
+        client.assert(response.status === 200, "Expected 200 but got " + response.status);
+        client.assert(response.body.every(function (p) { return p.stock === 13; }), "Expected only stock 13");
+        var id = client.global.get("productId");
+        client.assert(response.body.some(function (p) { return String(p.id) === String(id); }), "Expected product " + id + " in the results");
+    });
+%}
+
+### Stock level with min greater than max (400)
+GET {{host}}/api/products/stock-level?min=100&max=1
+Accept: application/json
+
+> {%
+    client.test("400 with a min error", function () {
+        client.assert(response.status === 400, "Expected 400 but got " + response.status);
+        client.assert(response.body.errors.min !== undefined, "Expected an error for min");
+    });
+%}
+
+### Stock level with a missing max (400)
+GET {{host}}/api/products/stock-level?min=0
+Accept: application/json
+
+> {%
+    client.test("400", function () {
+        client.assert(response.status === 400, "Expected 400 but got " + response.status);
+    });
+%}
+
+### Delete a product (204)
+DELETE {{host}}/api/products/{{deleteProductId}}
+
+> {%
+    client.test("204", function () {
+        client.assert(response.status === 204, "Expected 204 but got " + response.status);
+    });
+%}
+
+### Confirm the deleted product is gone (404)
+GET {{host}}/api/products/{{deleteProductId}}
+Accept: application/json
+
+> {%
+    client.test("404 Product not found", function () {
+        client.assert(response.status === 404, "Expected 404 but got " + response.status);
+    });
+%}
+
+### Delete an unknown product (404)
+DELETE {{host}}/api/products/999999
+
+> {%
+    client.test("404 Product not found", function () {
+        client.assert(response.status === 404, "Expected 404 but got " + response.status);
+    });
+%}
