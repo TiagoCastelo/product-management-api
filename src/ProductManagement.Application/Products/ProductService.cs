@@ -1,4 +1,4 @@
-﻿using ProductManagement.Domain.Products;
+using ProductManagement.Domain.Products;
 
 namespace ProductManagement.Application.Products;
 

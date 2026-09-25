@@ -1,4 +1,4 @@
-﻿using ProductManagement.Domain.Products;
+using ProductManagement.Domain.Products;
 
 namespace ProductManagement.UnitTests.Domain;
 
@@ -133,6 +133,28 @@ public class ProductTests
     public void Create_NegativeStock_ThrowsArgumentOutOfRangeException()
     {
         Assert.Throws<ArgumentOutOfRangeException>(() => Product.Create(ValidSku, ValidName, ValidDescription, ValidPrice, -1));
+    }
+
+    [Theory]
+    [InlineData(1, 1.00)]
+    [InlineData(49.9, 49.90)]
+    [InlineData(49.990, 49.99)]
+    public void Create_Price_IsStoredWithTwoDecimalPlaces(decimal price, decimal expected)
+    {
+        var product = Product.Create(ValidSku, ValidName, ValidDescription, price, ValidStock);
+
+        Assert.Equal(expected, product.Price);
+        Assert.Equal(2, product.Price.Scale);
+    }
+
+    [Fact]
+    public void UpdateDetails_WholeNumberPrice_IsStoredWithTwoDecimalPlaces()
+    {
+        var product = Product.Create(ValidSku, ValidName, ValidDescription, ValidPrice, ValidStock);
+
+        product.UpdateDetails(ValidName, ValidDescription, 30m);
+
+        Assert.Equal(2, product.Price.Scale);
     }
 
     [Fact]

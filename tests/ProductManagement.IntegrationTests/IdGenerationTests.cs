@@ -64,7 +64,7 @@ public sealed class IdGenerationTests(SqlServerAssemblyFixture fixture) : IAsync
     }
 
     private static Task<HttpResponseMessage> CreateProductAsync(HttpClient client, CancellationToken cancellationToken) =>
-        client.PostAsJsonAsync("/api/products", ProductPayloads.ValidCreate(), cancellationToken);
+        client.PostAsJsonAsync(ProductRoutes.Products, ProductPayloads.ValidCreate(), cancellationToken);
 
     private static async Task<int> ReadIdAsync(HttpResponseMessage response, CancellationToken cancellationToken) =>
         (await response.Content.ReadFromJsonAsync<ProductDto>(cancellationToken))!.Id;

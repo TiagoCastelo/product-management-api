@@ -1,4 +1,3 @@
-using System.ComponentModel.DataAnnotations;
 using System.Globalization;
 using System.Reflection;
 
@@ -22,25 +21,25 @@ public class ProductRequestValidationTests
 
     [Theory]
     [MemberData(nameof(CulturesAndRequests))]
-    public void PriceRange_PricesWithinBounds_AreValidInAnyCulture(string culture, Type requestType)
+    public void PriceAttribute_ValidPrices_AreValidInAnyCulture(string culture, Type requestType)
     {
-        var results = UnderCulture(culture, () => AreValid(requestType, 0.01m, 49.99m, 1_000_000.00m));
+        var results = UnderCulture(culture, () => AreValid(requestType, 0.01m, 49.99m, 49.990m, 1_000_000.00m));
 
         Assert.All(results, Assert.True);
     }
 
     [Theory]
     [MemberData(nameof(CulturesAndRequests))]
-    public void PriceRange_PricesOutsideBounds_AreInvalidInAnyCulture(string culture, Type requestType)
+    public void PriceAttribute_InvalidPrices_AreInvalidInAnyCulture(string culture, Type requestType)
     {
-        var results = UnderCulture(culture, () => AreValid(requestType, 0.009m, 1_000_000.01m));
+        var results = UnderCulture(culture, () => AreValid(requestType, 0.009m, 1_000_000.01m, 1.999m, -1m));
 
         Assert.All(results, Assert.False);
     }
 
     private static List<bool> AreValid(Type requestType, params decimal[] prices)
     {
-        var freshAttribute = requestType.GetProperty("Price")!.GetCustomAttribute<RangeAttribute>()!;
+        var freshAttribute = requestType.GetProperty("Price")!.GetCustomAttribute<PriceAttribute>()!;
         return [.. prices.Select(price => freshAttribute.IsValid(price))];
     }
 

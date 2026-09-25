@@ -1,13 +1,13 @@
-﻿using ProductManagement.Infrastructure.Persistence;
+using ProductManagement.Infrastructure.Persistence;
 
 namespace ProductManagement.UnitTests.Infrastructure;
 
 public class ProductSeederTests
 {
     [Fact]
-    public void CreateSeedProducts_Always_HasAtLeastTwentyProducts()
+    public void CreateSeedProducts_Always_HasTwentyFourProducts()
     {
-        Assert.True(ProductSeeder.CreateSeedProducts().Count >= 20);
+        Assert.Equal(24, ProductSeeder.CreateSeedProducts().Count);
     }
 
     [Fact]

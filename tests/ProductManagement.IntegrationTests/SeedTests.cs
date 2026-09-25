@@ -32,10 +32,10 @@ public sealed class SeedTests(SqlServerAssemblyFixture fixture) : IAsyncLifetime
         var cancellationToken = TestContext.Current.CancellationToken;
         var client = _factory.CreateClient();
 
-        var products = await client.GetFromJsonAsync<List<ProductDto>>("/api/products", cancellationToken);
+        var products = await client.GetFromJsonAsync<List<ProductDto>>(ProductRoutes.Products, cancellationToken);
 
         Assert.NotNull(products);
-        Assert.True(products!.Count >= 20);
+        Assert.Equal(24, products!.Count);
         Assert.Equal(products.Count, products.Select(p => p.Sku).Distinct().Count());
         Assert.True(products.Count(p => p.Stock == 0) >= 2);
         Assert.True(products.Count(p => p.Stock is >= 1 and <= 5) >= 3);
@@ -65,9 +65,9 @@ public sealed class SeedTests(SqlServerAssemblyFixture fixture) : IAsyncLifetime
         using var secondFactory = new ProductApiFactory(secondConnectionString);
         var client = secondFactory.CreateClient();
 
-        var seeded = await client.GetFromJsonAsync<List<ProductDto>>("/api/products", cancellationToken);
+        var seeded = await client.GetFromJsonAsync<List<ProductDto>>(ProductRoutes.Products, cancellationToken);
         var seededIds = seeded!.Select(p => p.Id).ToHashSet();
-        var createResponse = await client.PostAsJsonAsync("/api/products", ProductPayloads.ValidCreate(), cancellationToken);
+        var createResponse = await client.PostAsJsonAsync(ProductRoutes.Products, ProductPayloads.ValidCreate(), cancellationToken);
         var created = await createResponse.Content.ReadFromJsonAsync<ProductDto>(cancellationToken);
 
         Assert.Equal(100000, seeded!.Min(p => p.Id));

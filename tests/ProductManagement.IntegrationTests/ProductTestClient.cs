@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 
 using ProductManagement.Application.Products;
+using ProductManagement.Testing;
 
 namespace ProductManagement.IntegrationTests;
 
@@ -11,7 +12,7 @@ internal static class ProductTestClient
     {
         var payload = ProductPayloads.ValidCreate();
         customize?.Invoke(payload);
-        var response = await client.PostAsJsonAsync("/api/products", payload, cancellationToken);
+        var response = await client.PostAsJsonAsync(ProductRoutes.Products, payload, cancellationToken);
         var product = await response.Content.ReadFromJsonAsync<ProductDto>(cancellationToken);
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         return product!;

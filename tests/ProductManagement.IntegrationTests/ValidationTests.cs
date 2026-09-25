@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 
+using ProductManagement.Api.ErrorHandling;
 using ProductManagement.Testing;
 
 namespace ProductManagement.IntegrationTests;
@@ -20,7 +21,7 @@ public sealed class ValidationTests(SqlServerAssemblyFixture fixture)
         var payload = ProductPayloads.ValidCreate();
         payload.Remove(field);
 
-        var response = await _client.PostAsJsonAsync("/api/products", payload, cancellationToken);
+        var response = await _client.PostAsJsonAsync(ProductRoutes.Products, payload, cancellationToken);
         var problem = await ProblemResponses.ReadValidationProblemAsync(response, cancellationToken);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -37,7 +38,7 @@ public sealed class ValidationTests(SqlServerAssemblyFixture fixture)
         var cancellationToken = TestContext.Current.CancellationToken;
         var payload = ProductPayloads.ValidCreate(invalidSku);
 
-        var response = await _client.PostAsJsonAsync("/api/products", payload, cancellationToken);
+        var response = await _client.PostAsJsonAsync(ProductRoutes.Products, payload, cancellationToken);
         var problem = await ProblemResponses.ReadValidationProblemAsync(response, cancellationToken);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -53,7 +54,7 @@ public sealed class ValidationTests(SqlServerAssemblyFixture fixture)
         var payload = ProductPayloads.ValidCreate();
         payload["name"] = invalidName;
 
-        var response = await _client.PostAsJsonAsync("/api/products", payload, cancellationToken);
+        var response = await _client.PostAsJsonAsync(ProductRoutes.Products, payload, cancellationToken);
         var problem = await ProblemResponses.ReadValidationProblemAsync(response, cancellationToken);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -67,7 +68,7 @@ public sealed class ValidationTests(SqlServerAssemblyFixture fixture)
         var payload = ProductPayloads.ValidCreate();
         payload["name"] = new string('A', 101);
 
-        var response = await _client.PostAsJsonAsync("/api/products", payload, cancellationToken);
+        var response = await _client.PostAsJsonAsync(ProductRoutes.Products, payload, cancellationToken);
         var problem = await ProblemResponses.ReadValidationProblemAsync(response, cancellationToken);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -81,7 +82,7 @@ public sealed class ValidationTests(SqlServerAssemblyFixture fixture)
         var payload = ProductPayloads.ValidCreate();
         payload["description"] = new string('A', 501);
 
-        var response = await _client.PostAsJsonAsync("/api/products", payload, cancellationToken);
+        var response = await _client.PostAsJsonAsync(ProductRoutes.Products, payload, cancellationToken);
         var problem = await ProblemResponses.ReadValidationProblemAsync(response, cancellationToken);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -97,7 +98,7 @@ public sealed class ValidationTests(SqlServerAssemblyFixture fixture)
         var payload = ProductPayloads.ValidCreate();
         payload["price"] = invalidPrice;
 
-        var response = await _client.PostAsJsonAsync("/api/products", payload, cancellationToken);
+        var response = await _client.PostAsJsonAsync(ProductRoutes.Products, payload, cancellationToken);
         var problem = await ProblemResponses.ReadValidationProblemAsync(response, cancellationToken);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -111,7 +112,7 @@ public sealed class ValidationTests(SqlServerAssemblyFixture fixture)
         var payload = ProductPayloads.ValidCreate();
         payload["price"] = 49.999m;
 
-        var response = await _client.PostAsJsonAsync("/api/products", payload, cancellationToken);
+        var response = await _client.PostAsJsonAsync(ProductRoutes.Products, payload, cancellationToken);
         var problem = await ProblemResponses.ReadValidationProblemAsync(response, cancellationToken);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -125,7 +126,7 @@ public sealed class ValidationTests(SqlServerAssemblyFixture fixture)
         var payload = ProductPayloads.ValidCreate();
         payload["price"] = 49.990m;
 
-        var response = await _client.PostAsJsonAsync("/api/products", payload, cancellationToken);
+        var response = await _client.PostAsJsonAsync(ProductRoutes.Products, payload, cancellationToken);
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
     }
@@ -137,7 +138,7 @@ public sealed class ValidationTests(SqlServerAssemblyFixture fixture)
         var payload = ProductPayloads.ValidCreate();
         payload["stock"] = -1;
 
-        var response = await _client.PostAsJsonAsync("/api/products", payload, cancellationToken);
+        var response = await _client.PostAsJsonAsync(ProductRoutes.Products, payload, cancellationToken);
         var problem = await ProblemResponses.ReadValidationProblemAsync(response, cancellationToken);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -228,25 +229,29 @@ public sealed class ValidationTests(SqlServerAssemblyFixture fixture)
     }
 
     [Fact]
-    public async Task StockLevel_MissingMin_Returns400()
+    public async Task StockLevel_MissingMin_Returns400WithMinError()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
 
         var response = await _client.GetAsync(ProductRoutes.StockLevel("max=10"), cancellationToken);
+        var problem = await ProblemResponses.ReadValidationProblemAsync(response, cancellationToken);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Equal(ProblemResponses.MediaType, response.Content.Headers.ContentType?.MediaType);
+        Assert.Contains("min", problem.Errors.Keys);
     }
 
     [Fact]
-    public async Task StockLevel_MissingMax_Returns400()
+    public async Task StockLevel_MissingMax_Returns400WithMaxError()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
 
         var response = await _client.GetAsync(ProductRoutes.StockLevel("min=0"), cancellationToken);
+        var problem = await ProblemResponses.ReadValidationProblemAsync(response, cancellationToken);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Equal(ProblemResponses.MediaType, response.Content.Headers.ContentType?.MediaType);
+        Assert.Contains("max", problem.Errors.Keys);
     }
 
     [Fact]
@@ -271,5 +276,17 @@ public sealed class ValidationTests(SqlServerAssemblyFixture fixture)
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Contains("min", problem.Errors.Keys);
+    }
+
+    [Fact]
+    public async Task Create_WithoutBody_Returns400WithoutFrameworkDetails()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+
+        var response = await _client.PostAsync(ProductRoutes.Products, null, cancellationToken);
+        var problem = await ProblemResponses.ReadProblemAsync(response, cancellationToken);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(BadHttpRequestExceptionHandler.Detail, problem.Detail);
     }
 }

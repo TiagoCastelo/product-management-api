@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 
+using ProductManagement.Api.ErrorHandling;
 using ProductManagement.Application.Products;
 using ProductManagement.Testing;
 
@@ -113,24 +114,28 @@ public sealed class StockTests(SqlServerAssemblyFixture fixture)
     }
 
     [Fact]
-    public async Task DecrementStock_NonNumericQuantity_Returns400()
+    public async Task DecrementStock_NonNumericQuantity_Returns400WithGenericDetail()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
         var created = await ProductTestClient.CreateAsync(_client, null, cancellationToken);
 
         var response = await _client.PostAsync(ProductRoutes.DecrementStock(created.Id, "abc"), null, cancellationToken);
+        var problem = await ProblemResponses.ReadProblemAsync(response, cancellationToken);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(BadHttpRequestExceptionHandler.Detail, problem.Detail);
     }
 
     [Fact]
-    public async Task AddStock_NonNumericQuantity_Returns400()
+    public async Task AddStock_NonNumericQuantity_Returns400WithGenericDetail()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
         var created = await ProductTestClient.CreateAsync(_client, null, cancellationToken);
 
         var response = await _client.PostAsync(ProductRoutes.AddStock(created.Id, "abc"), null, cancellationToken);
+        var problem = await ProblemResponses.ReadProblemAsync(response, cancellationToken);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(BadHttpRequestExceptionHandler.Detail, problem.Detail);
     }
 }

@@ -15,7 +15,7 @@ public sealed class CrudTests(SqlServerAssemblyFixture fixture)
     {
         var cancellationToken = TestContext.Current.CancellationToken;
 
-        var products = await _client.GetFromJsonAsync<List<ProductDto>>("/api/products", cancellationToken);
+        var products = await _client.GetFromJsonAsync<List<ProductDto>>(ProductRoutes.Products, cancellationToken);
 
         Assert.NotNull(products);
         Assert.True(products!.Count >= 20);
@@ -27,7 +27,7 @@ public sealed class CrudTests(SqlServerAssemblyFixture fixture)
         var cancellationToken = TestContext.Current.CancellationToken;
         var sku = TestIdentifiers.NewSku();
 
-        var response = await _client.PostAsJsonAsync("/api/products", ProductPayloads.ValidCreate(sku), cancellationToken);
+        var response = await _client.PostAsJsonAsync(ProductRoutes.Products, ProductPayloads.ValidCreate(sku), cancellationToken);
         var product = await response.Content.ReadFromJsonAsync<ProductDto>(cancellationToken);
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
@@ -135,7 +135,7 @@ public sealed class CrudTests(SqlServerAssemblyFixture fixture)
         var duplicatePayload = ProductPayloads.ValidCreate(sku);
         duplicatePayload["name"] = name;
 
-        var response = await _client.PostAsJsonAsync("/api/products", duplicatePayload, cancellationToken);
+        var response = await _client.PostAsJsonAsync(ProductRoutes.Products, duplicatePayload, cancellationToken);
         var problem = await ProblemResponses.ReadProblemAsync(response, cancellationToken);
         var matches = await _client.GetFromJsonAsync<List<ProductDto>>(ProductRoutes.Search(name), cancellationToken);
 

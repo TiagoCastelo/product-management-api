@@ -13,4 +13,5 @@
     <ProjectReference Include="..\ProductManagement.Infrastructure\ProductManagement.Infrastructure.csproj" />
     <ProjectReference Include="..\ProductManagement.ServiceDefaults\ProductManagement.ServiceDefaults.csproj" />
   </ItemGroup>
+
 </Project>

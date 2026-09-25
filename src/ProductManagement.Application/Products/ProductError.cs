@@ -1,4 +1,4 @@
-﻿namespace ProductManagement.Application.Products;
+namespace ProductManagement.Application.Products;
 
 public enum ProductError
 {

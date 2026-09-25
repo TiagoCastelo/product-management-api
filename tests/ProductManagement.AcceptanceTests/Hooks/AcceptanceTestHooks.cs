@@ -7,25 +7,25 @@ namespace ProductManagement.AcceptanceTests.Hooks;
 [Binding]
 public sealed class AcceptanceTestHooks
 {
-    private static SqlServerFixture? _sqlServer;
+    private static SqlServerFixture? s_sqlServer;
 
     public static ProductApiFactory Factory { get; private set; } = null!;
 
     [BeforeTestRun]
     public static async Task StartInfrastructureAsync()
     {
-        _sqlServer = new SqlServerFixture();
-        await _sqlServer.StartAsync(CancellationToken.None);
-        Factory = new ProductApiFactory(_sqlServer.ConnectionString);
+        s_sqlServer = new SqlServerFixture();
+        await s_sqlServer.StartAsync(CancellationToken.None);
+        Factory = new ProductApiFactory(s_sqlServer.ConnectionString);
     }
 
     [AfterTestRun]
     public static async Task StopInfrastructureAsync()
     {
         Factory.Dispose();
-        if (_sqlServer is not null)
+        if (s_sqlServer is not null)
         {
-            await _sqlServer.DisposeAsync();
+            await s_sqlServer.DisposeAsync();
         }
     }
 }

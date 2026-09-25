@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
 using Microsoft.AspNetCore.Http.HttpResults;
 
@@ -32,12 +32,7 @@ public static class ProductEndpoints
     private static async Task<Results<Created<ProductDto>, ValidationProblem, ProblemHttpResult>> Create(
         CreateProductRequest request, ProductService service, ILogger<Program> logger, CancellationToken cancellationToken)
     {
-        if (!HasValidPriceScale(request.Price!.Value))
-        {
-            return InvalidPriceScale();
-        }
-
-        var command = new CreateProductCommand(request.Sku!, request.Name!, request.Description, request.Price.Value, request.Stock!.Value);
+        var command = new CreateProductCommand(request.Sku!, request.Name!, request.Description, request.Price!.Value, request.Stock!.Value);
         var result = await service.CreateAsync(command, cancellationToken);
         return result.IsSuccess
             ? TypedResults.Created($"/api/products/{result.Value.Id}", result.Value)
@@ -53,12 +48,7 @@ public static class ProductEndpoints
     private static async Task<Results<Ok<ProductDto>, ValidationProblem, ProblemHttpResult>> Update(
         int id, UpdateProductRequest request, ProductService service, ILogger<Program> logger, CancellationToken cancellationToken)
     {
-        if (!HasValidPriceScale(request.Price!.Value))
-        {
-            return InvalidPriceScale();
-        }
-
-        var command = new UpdateProductDetailsCommand(request.Name!, request.Description, request.Price.Value, request.RowVersion!);
+        var command = new UpdateProductDetailsCommand(request.Name!, request.Description, request.Price!.Value, request.RowVersion!);
         var result = await service.UpdateDetailsAsync(id, command, cancellationToken);
         return result.IsSuccess ? TypedResults.Ok(result.Value) : result.Error.ToProblem(logger);
     }
@@ -98,8 +88,24 @@ public static class ProductEndpoints
     }
 
     private static async Task<Results<Ok<IReadOnlyList<ProductDto>>, ValidationProblem>> StockLevel(
-        [Range(0, int.MaxValue)] int min, [Range(0, int.MaxValue)] int max, ProductService service, CancellationToken cancellationToken)
+        [Range(0, int.MaxValue)] int? min, [Range(0, int.MaxValue)] int? max, ProductService service, CancellationToken cancellationToken)
     {
+        if (min is null || max is null)
+        {
+            var missing = new Dictionary<string, string[]>();
+            if (min is null)
+            {
+                missing["min"] = ["Min is required."];
+            }
+
+            if (max is null)
+            {
+                missing["max"] = ["Max is required."];
+            }
+
+            return TypedResults.ValidationProblem(missing);
+        }
+
         if (min > max)
         {
             return TypedResults.ValidationProblem(new Dictionary<string, string[]>
@@ -108,14 +114,6 @@ public static class ProductEndpoints
             });
         }
 
-        return TypedResults.Ok(await service.ListByStockRangeAsync(min, max, cancellationToken));
+        return TypedResults.Ok(await service.ListByStockRangeAsync(min.Value, max.Value, cancellationToken));
     }
-
-    private static bool HasValidPriceScale(decimal price) => decimal.Round(price, ProductRules.MaxPriceDecimals) == price;
-
-    private static ValidationProblem InvalidPriceScale() =>
-        TypedResults.ValidationProblem(new Dictionary<string, string[]>
-        {
-            ["price"] = [$"Price must not have more than {ProductRules.MaxPriceDecimals} decimal places."],
-        });
 }

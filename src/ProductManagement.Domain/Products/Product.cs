@@ -1,4 +1,4 @@
-﻿namespace ProductManagement.Domain.Products;
+namespace ProductManagement.Domain.Products;
 
 public sealed class Product
 {
@@ -15,8 +15,6 @@ public sealed class Product
     public int Stock { get; private set; }
 
     public byte[] RowVersion { get; private set; }
-
-    #region Constructors
 
     private Product()
     {
@@ -35,6 +33,8 @@ public sealed class Product
         RowVersion = [];
     }
 
+    private static readonly decimal ZeroAtPriceScale = new(0, 0, 0, false, ProductRules.MaxPriceDecimals);
+
     public static Product Create(string sku, string name, string? description, decimal price, int stock)
     {
         ValidateSku(sku);
@@ -42,10 +42,8 @@ public sealed class Product
         ValidateDescription(description);
         ValidatePrice(price);
         ValidateStock(stock);
-        return new Product(sku, name, description, price, stock);
+        return new Product(sku, name, description, WithPriceScale(price), stock);
     }
-    #endregion
-
 
     public void UpdateDetails(string name, string? description, decimal price)
     {
@@ -54,10 +52,10 @@ public sealed class Product
         ValidatePrice(price);
         Name = name;
         Description = description;
-        Price = price;
+        Price = WithPriceScale(price);
     }
 
-    #region Validation
+    private static decimal WithPriceScale(decimal price) => decimal.Round(price, ProductRules.MaxPriceDecimals) + ZeroAtPriceScale;
 
     private static void ValidateSku(string sku)
     {
@@ -112,5 +110,4 @@ public sealed class Product
             throw new ArgumentOutOfRangeException(nameof(stock), stock, "Stock must not be negative.");
         }
     }
-    #endregion
 }
