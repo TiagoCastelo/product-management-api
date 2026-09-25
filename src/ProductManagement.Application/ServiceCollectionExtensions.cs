@@ -6,6 +6,6 @@ namespace ProductManagement.Application;
 
 public static class ServiceCollectionExtensions
 {
-	public static IServiceCollection AddApplication(this IServiceCollection services) =>
-		services.AddScoped<ProductService>();
+    public static IServiceCollection AddApplication(this IServiceCollection services) =>
+        services.AddScoped<ProductService>();
 }

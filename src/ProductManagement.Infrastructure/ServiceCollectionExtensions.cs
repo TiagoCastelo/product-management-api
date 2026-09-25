@@ -8,12 +8,12 @@ namespace ProductManagement.Infrastructure;
 
 public static class ServiceCollectionExtensions
 {
-	public static IHostApplicationBuilder AddInfrastructure(this IHostApplicationBuilder builder)
-	{
-		builder.AddSqlServerDbContext<ProductDbContext>(
-			ProductDbContext.ConnectionName,
-			configureDbContextOptions: options => options.UseProductSeeding());
-		builder.Services.AddScoped<IProductRepository, ProductRepository>();
-		return builder;
-	}
+    public static IHostApplicationBuilder AddInfrastructure(this IHostApplicationBuilder builder)
+    {
+        builder.AddSqlServerDbContext<ProductDbContext>(
+            ProductDbContext.ConnectionName,
+            configureDbContextOptions: options => options.UseProductSeeding());
+        builder.Services.AddScoped<IProductRepository, ProductRepository>();
+        return builder;
+    }
 }

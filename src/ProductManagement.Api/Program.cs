@@ -16,17 +16,17 @@ builder.Services.AddOpenApi();
 builder.Services.AddValidation();
 builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = context =>
 {
-	if (context.ProblemDetails is HttpValidationProblemDetails validationProblemDetails)
-	{
-		var camelCasedErrors = validationProblemDetails.Errors.ToDictionary(
-			pair => JsonNamingPolicy.CamelCase.ConvertName(pair.Key),
-			pair => pair.Value);
-		validationProblemDetails.Errors.Clear();
-		foreach (var (key, value) in camelCasedErrors)
-		{
-			validationProblemDetails.Errors.Add(key, value);
-		}
-	}
+    if (context.ProblemDetails is HttpValidationProblemDetails validationProblemDetails)
+    {
+        var camelCasedErrors = validationProblemDetails.Errors.ToDictionary(
+            pair => JsonNamingPolicy.CamelCase.ConvertName(pair.Key),
+            pair => pair.Value);
+        validationProblemDetails.Errors.Clear();
+        foreach (var (key, value) in camelCasedErrors)
+        {
+            validationProblemDetails.Errors.Add(key, value);
+        }
+    }
 });
 builder.Services.AddExceptionHandler<BadHttpRequestExceptionHandler>();
 builder.Services.AddExceptionHandler<UnhandledExceptionHandler>();
@@ -38,8 +38,8 @@ app.UseStatusCodePages();
 
 if (app.Environment.IsDevelopment())
 {
-	app.MapOpenApi();
-	app.MapScalarApiReference();
+    app.MapOpenApi();
+    app.MapScalarApiReference();
 }
 
 app.MapDefaultEndpoints();

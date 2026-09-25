@@ -2,10 +2,10 @@
 
 public enum ProductError
 {
-	NotFound,
-	DuplicateSku,
-	ConcurrencyConflict,
-	InsufficientStock,
-	StockOverflow,
-	IdSpaceExhausted,
+    NotFound,
+    DuplicateSku,
+    ConcurrencyConflict,
+    InsufficientStock,
+    StockOverflow,
+    IdSpaceExhausted,
 }

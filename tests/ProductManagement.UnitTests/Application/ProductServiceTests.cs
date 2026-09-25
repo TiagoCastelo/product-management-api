@@ -1,5 +1,4 @@
-﻿using NSubstitute;
-using ProductManagement.Application.Products;
+﻿using ProductManagement.Application.Products;
 using ProductManagement.Domain.Products;
 
 namespace ProductManagement.UnitTests.Application;
