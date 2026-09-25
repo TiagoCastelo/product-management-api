@@ -2,26 +2,25 @@
 
   <PropertyGroup>
     <IsPackable>false</IsPackable>
-    <NoWarn>$(NoWarn);CA1707</NoWarn>
     <OutputType>Exe</OutputType>
+    <NoWarn>$(NoWarn);CA1707</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Testing.Extensions.TrxReport" />
-    <PackageReference Include="NSubstitute" />
     <PackageReference Include="xunit.v3" />
   </ItemGroup>
 
   <ItemGroup>
-    <Using Include="NSubstitute" />
     <Using Include="Xunit" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\ProductManagement.Domain\ProductManagement.Domain.csproj" />
-    <ProjectReference Include="..\..\src\ProductManagement.Application\ProductManagement.Application.csproj" />
-    <ProjectReference Include="..\..\src\ProductManagement.Infrastructure\ProductManagement.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\ProductManagement.Api\ProductManagement.Api.csproj" />
+    <ProjectReference Include="..\..\src\ProductManagement.Application\ProductManagement.Application.csproj" />
+    <ProjectReference Include="..\..\src\ProductManagement.Domain\ProductManagement.Domain.csproj" />
+    <ProjectReference Include="..\..\src\ProductManagement.Infrastructure\ProductManagement.Infrastructure.csproj" />
+    <ProjectReference Include="..\ProductManagement.Testing\ProductManagement.Testing.csproj" />
   </ItemGroup>
 
 </Project>

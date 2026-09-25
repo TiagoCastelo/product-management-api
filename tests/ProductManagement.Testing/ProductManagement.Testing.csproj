@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+    <PackageReference Include="Microsoft.Data.SqlClient" />
+    <PackageReference Include="Testcontainers.MsSql" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\ProductManagement.Api\ProductManagement.Api.csproj" />
+    <ProjectReference Include="..\..\src\ProductManagement.Infrastructure\ProductManagement.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>
